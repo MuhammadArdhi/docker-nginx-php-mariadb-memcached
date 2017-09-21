@@ -1,0 +1,77 @@
+version: "2" # Compose version used
+services:    # All services are inputed in below
+  # nginx node
+  nginx:
+    # Build based on a Dockerfile in /nginx directory
+    build:
+      context: ./nginx
+    # Map port 80 container to port on 8400
+    ports: 
+      - "8400:80"
+    # Mapping directory of container in /var/www to directory /www on laptop
+    volumes:
+      - ./www:/var/www
+      - ./var/log/nginx:/var/log/nginx
+    # Connecting nginx container with fpm container
+    links:
+      - fpm
+      - memcached:memcached
+
+  # fpm node
+  fpm:
+    # Build based on a Dockerfile in /fpm directory
+    build: 
+      context: ./fpm
+    # Mapping directory of container in /var/www to directory /www on laptop
+    volumes:
+      - ./www:/var/www
+    # Mapping port 9000 container to port 9000 on laptop
+    expose: 
+      - "9000"
+    # Connecting fpm container with db & memcached containers
+    links:
+      - db
+      - memcached:memcached
+    # Set variable
+    environment:
+      - "DB_HOST=db"
+      - "DB_DATABASE=hargadunia"
+  
+  # DB node
+  db:
+    # Build image directly from docker hub (mariadb)
+    image: mariadb
+    # Mapping port 3306 container to port 3306 on laptop
+    expose:
+      - "3306"
+    # Set variable
+    environment:
+      - MYSQL_ROOT_PASSWORD=123
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123
+      - MYSQL_DATABASE=hargadunia
+    # Mapping directory on container to database on laptop
+    volumes:
+      - ./var/lib/mariadb:/var/lib/mysql
+    # set static ip
+    # networks:
+    #   vpcbr:
+    #     ipv4_address: 10.10.10.10
+
+  # memcached node
+  memcached:
+    # Build image directly from memcached (docker hub)
+    image: memcached
+    # Mapping port 11211 container to port 11211 on laptop
+    expose:
+      - "11211"
+    environment:
+      - MEMCACHED_MEMORY_LIMIT=128
+
+# networks:
+#   vpcbr:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 10.10.10.0/16
+#           gateway: 10.10.10.1
