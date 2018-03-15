@@ -7,7 +7,7 @@ services:    # All services are inputed in below
       context: ./nginx
     # Map port 80 container to port on 8400
     ports: 
-      - "8400:80"
+      - "8400"
     # Mapping directory of container in /var/www to directory /www on laptop
     volumes:
       - ./www:/var/www
@@ -16,6 +16,8 @@ services:    # All services are inputed in below
     links:
       - fpm
       - memcached:memcached
+    environment:
+      - VIRTUAL_HOST=localhost.docker
 
   # fpm node
   fpm:
@@ -35,7 +37,7 @@ services:    # All services are inputed in below
     # Set variable
     environment:
       - "DB_HOST=db"
-      - "DB_DATABASE=hargadunia"
+      - "DB_DATABASE=database_name"
   
   # DB node
   db:
@@ -49,14 +51,10 @@ services:    # All services are inputed in below
       - MYSQL_ROOT_PASSWORD=123
       - MYSQL_USER=root
       - MYSQL_PASSWORD=123
-      - MYSQL_DATABASE=hargadunia
+      - MYSQL_DATABASE=database_name
     # Mapping directory on container to database on laptop
     volumes:
       - ./var/lib/mariadb:/var/lib/mysql
-    # set static ip
-    # networks:
-    #   vpcbr:
-    #     ipv4_address: 10.10.10.10
 
   # memcached node
   memcached:
@@ -68,10 +66,9 @@ services:    # All services are inputed in below
     environment:
       - MEMCACHED_MEMORY_LIMIT=128
 
-# networks:
-#   vpcbr:
-#     driver: bridge
-#     ipam:
-#       config:
-#         - subnet: 10.10.10.0/16
-#           gateway: 10.10.10.1
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
