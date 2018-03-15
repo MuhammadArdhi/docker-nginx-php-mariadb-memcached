@@ -17,7 +17,7 @@ services:    # All services are inputed in below
       - fpm
       - memcached:memcached
     environment:
-      - VIRTUAL_HOST=localhost.docker
+      - VIRTUAL_HOST=${HOST}
 
   # fpm node
   fpm:
@@ -32,26 +32,26 @@ services:    # All services are inputed in below
       - "9000"
     # Connecting fpm container with db & memcached containers
     links:
-      - db
+      - ${DB_HOST}
       - memcached:memcached
     # Set variable
     environment:
-      - "DB_HOST=db"
-      - "DB_DATABASE=database_name"
-  
+      - "DB_HOST=${DB_HOST}"
+      - "DB_DATABASE=${DB_NAME}"
+
   # DB node
   db:
     # Build image directly from docker hub (mariadb)
     image: mariadb
-    # Mapping port 3306 container to port 3306 on laptop
+    # Mapping port 3306 container to port 3306 on your machine
     expose:
       - "3306"
     # Set variable
     environment:
-      - MYSQL_ROOT_PASSWORD=123
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=123
-      - MYSQL_DATABASE=database_name
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
     # Mapping directory on container to database on laptop
     volumes:
       - ./var/lib/mariadb:/var/lib/mysql
