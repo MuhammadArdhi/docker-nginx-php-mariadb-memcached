@@ -1,74 +1,78 @@
-version: "2" # Compose version used
-services:    # All services are inputed in below
-  # nginx node
+version: "3.6" 
+services:
   nginx:
-    # Build based on a Dockerfile in /nginx directory
+    container_name: hd-nginx
     build:
       context: ./nginx
-    # Map port 80 container to port on 8400
     ports: 
       - "8400"
-    # Mapping directory of container in /var/www to directory /www on laptop
     volumes:
       - ./www:/var/www
       - ./var/log/nginx:/var/log/nginx
-    # Connecting nginx container with fpm container
-    links:
+    depends_on:
       - fpm
-      - memcached:memcached
+      - memcached
+      - elasticsearch
     environment:
-      - VIRTUAL_HOST=${HOST}
-
-  # fpm node
+      VIRTUAL_HOST: ${HOST}
   fpm:
-    # Build based on a Dockerfile in /fpm directory
+    container_name: hd-php-fpm
     build: 
       context: ./fpm
-    # Mapping directory of container in /var/www to directory /www on laptop
     volumes:
       - ./www:/var/www
-    # Mapping port 9000 container to port 9000 on laptop
+      - ./fpm/uploads.ini:/etc/php/5.6/fpm/conf.d/uploads.ini
     expose: 
       - "9000"
-    # Connecting fpm container with db & memcached containers
-    links:
+    depends_on:
       - ${DB_HOST}
-      - memcached:memcached
-    # Set variable
+      - memcached
+      # - redis
     environment:
-      - "DB_HOST=${DB_HOST}"
-      - "DB_DATABASE=${DB_NAME}"
-
-  # DB node
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_NAME}
   db:
-    # Build image directly from docker hub (mariadb)
-    image: mariadb
-    # Mapping port 3306 container to port 3306 on your machine
+    image: mariadb:10.1.32
+    container_name: hd-mariadb
     expose:
       - "3306"
-    # Set variable
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
-      - MYSQL_USER=${DB_USER}
-      - MYSQL_PASSWORD=${DB_PASSWORD}
-      - MYSQL_DATABASE=${DB_NAME}
-    # Mapping directory on container to database on laptop
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     volumes:
       - ./var/lib/mariadb:/var/lib/mysql
-
-  # memcached node
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest    
+    container_name: hd-phpmyadmin
+    depends_on: 
+      - db
+    ports:
+      - "2112:2112"
+    environment:
+      PMA_HOST: db
+      VIRTUAL_HOST: ${PHPMYADMIN_HOST}
   memcached:
-    # Build image directly from memcached (docker hub)
     image: memcached
-    # Mapping port 11211 container to port 11211 on laptop
+    container_name: hd-memcached
     expose:
       - "11211"
     environment:
-      - MEMCACHED_MEMORY_LIMIT=128
-
+      MEMCACHED_MEMORY_LIMIT: 128
+  elasticsearch:
+    container_name: elasticsearch
+    image: 'docker.elastic.co/elasticsearch/elasticsearch:6.2.3'
+    ports: 
+      - "9200:9200"
   nginx-proxy:
     image: jwilder/nginx-proxy
     ports:
       - "80:80"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  # redis:
+    # image: redis
+    # ports: 
+      # - "6379"
