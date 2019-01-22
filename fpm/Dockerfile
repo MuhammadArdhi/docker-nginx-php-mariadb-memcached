@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y software-properties-common language-pac
 
 RUN apt-get update && apt-get install -y memcached procps netcat
 
-RUN echo "extension='/usr/lib/php/20131226/memcached.so'" >> /etc/php/5.6/fpm/php.ini
+# Delete and add a new php.ini file
+RUN rm /etc/php/5.6/fpm/php.ini
+ADD ./php.ini /etc/php/5.6/fpm/
+
+RUN echo "request_terminate_timeout = 300" >> /etc/php/5.6/fpm/pool.d/www.conf
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

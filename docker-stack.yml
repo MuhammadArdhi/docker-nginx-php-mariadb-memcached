@@ -1,0 +1,109 @@
+version: "3" 
+services:
+  db:
+    image: mariadb:10.1.32
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - ./var/lib/mariadb:/var/lib/mysql
+    networks:
+      - frontend
+    labels:
+      - "traefik.frontend.rule=Host:db.mariadb"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  fpm:
+    image: localhost:5000/hd-fpm
+    volumes:
+      - ./www:/var/www
+      - ./fpm/uploads.ini:/etc/php/5.6/fpm/conf.d/uploads.ini
+    depends_on:
+      - db
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_NAME}
+    networks:
+      - frontend
+    labels:
+      - "traefik.frontend.rule=Host:php.fpm"
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+  memcached:
+    image: memcached
+    networks:
+      - frontend
+    labels:
+      - "traefik.frontend.rule=Host:memcached"
+    environment:
+      MEMCACHED_MEMORY_LIMIT: 128
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  nginx:
+    image: localhost:5000/hd-nginx
+    networks:
+      - frontend
+    volumes:
+      - ./www:/var/www
+      - ./var/log/nginx:/var/log/nginx
+    depends_on:
+      - fpm
+      - memcached
+    labels:
+      - "traefik.frontend.rule=Host:hargadunia.loc"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest    
+    depends_on: 
+      - db
+    networks:
+      - frontend 
+    labels:
+      - "traefik.frontend.rule=Host:pma.hargadunia.loc"
+    environment:
+      PMA_HOST: db
+      VIRTUAL_HOST: ${PHPMYADMIN_HOST}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  search:
+    image: localhost:5000/go-product
+    networks:
+      - frontend
+    labels:
+      - "traefik.frontend.rule=Host:search.hargadunia.loc"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  proxy:
+    image: traefik 
+    command: --api --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 80:80
+      - 8080:8080
+    networks:
+      - frontend
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  frontend:

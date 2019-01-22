@@ -4,8 +4,6 @@ services:
     container_name: hd-nginx
     build:
       context: ./nginx
-    ports: 
-      - "8400"
     volumes:
       - ./www:/var/www
       - ./var/log/nginx:/var/log/nginx
@@ -13,8 +11,8 @@ services:
       - fpm
       - memcached
       - elasticsearch
-    environment:
-      VIRTUAL_HOST: ${HOST}
+    labels:
+      - "traefik.frontend.rule=Host:hargadunia.loc"
   fpm:
     container_name: hd-php-fpm
     build: 
@@ -59,19 +57,11 @@ services:
       - "11211"
     environment:
       MEMCACHED_MEMORY_LIMIT: 128
-  elasticsearch:
-    container_name: elasticsearch
-    image: 'docker.elastic.co/elasticsearch/elasticsearch:6.2.3'
+  proxy:
+    image: traefik
+    command: --api --docker
     ports: 
-      - "9200:9200"
-  nginx-proxy:
-    image: jwilder/nginx-proxy
-    ports:
-      - "80:80"
+      - 80:80
+      - 8080:8080
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-
-  # redis:
-    # image: redis
-    # ports: 
-      # - "6379"
+      - /var/run/docker.sock:/var/run/docker.sock
