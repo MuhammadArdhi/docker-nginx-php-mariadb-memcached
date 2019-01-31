@@ -1,36 +1,8 @@
 version: "3" 
 services:
-  nginx:
-    container_name: hd-nginx
-    build:
-      context: ./nginx
-    volumes:
-      - ./www:/var/www
-      - ./var/log/nginx:/var/log/nginx
-    depends_on:
-      - fpm
-      - memcached
-      - elasticsearch
-    labels:
-      - "traefik.frontend.rule=Host:hargadunia.loc"
-  fpm:
-    container_name: hd-php-fpm
-    build: 
-      context: ./fpm
-    volumes:
-      - ./www:/var/www
-      - ./fpm/uploads.ini:/etc/php/5.6/fpm/conf.d/uploads.ini
-    expose: 
-      - "9000"
-    depends_on:
-      - db
-      # - redis
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_DATABASE: ${DB_NAME}
-  db:
+  mariadb:
     image: mariadb:10.1.32
-    container_name: hd-mariadb
+    container_name: mariadb
     expose:
       - "3306"
     environment:
@@ -40,23 +12,37 @@ services:
       MYSQL_DATABASE: ${DB_NAME}
     volumes:
       - ./var/lib/mariadb:/var/lib/mysql
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest    
-    container_name: hd-phpmyadmin
-    depends_on: 
-      - db
-    ports:
-      - "2112:2112"
-    environment:
-      PMA_HOST: db
-      VIRTUAL_HOST: ${PHPMYADMIN_HOST}
   memcached:
     image: memcached
-    container_name: hd-memcached
+    container_name: memcached
     expose:
       - "11211"
     environment:
       MEMCACHED_MEMORY_LIMIT: 128
+  webapp:
+    container_name: webapp 
+    build:
+      context: ./build/nginxphp
+    volumes:
+      - ./www:/var/www
+      - ./var/log/nginx:/var/log/nginx
+    depends_on:
+      - mariadb
+      - memcached
+    labels:
+      - "traefik.frontend.rule=Host:${HOST}"
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest    
+    container_name: phpmyadmin
+    depends_on: 
+      - mariadb
+    ports:
+      - "2112:2112"
+    environment:
+      PMA_HOST: ${DB_HOST}
+      VIRTUAL_HOST: ${PHPMYADMIN_HOST}
+    labels:
+      - "traefik.frontend.rule=Host:${PHPMYADMIN_HOST}"
   proxy:
     image: traefik
     command: --api --docker
