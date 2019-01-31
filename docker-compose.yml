@@ -29,25 +29,23 @@ services:
     depends_on:
       - mariadb
       - memcached
-    labels:
-      - "traefik.frontend.rule=Host:${HOST}"
+  api:
+    image: containous/whoami
+    container_name: api
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest    
     container_name: phpmyadmin
     depends_on: 
       - mariadb
-    ports:
-      - "2112:2112"
     environment:
       PMA_HOST: ${DB_HOST}
       VIRTUAL_HOST: ${PHPMYADMIN_HOST}
-    labels:
-      - "traefik.frontend.rule=Host:${PHPMYADMIN_HOST}"
-  proxy:
-    image: traefik
-    command: --api --docker
-    ports: 
-      - 80:80
-      - 8080:8080
+  haproxy:
+    container_name: haproxy
+    build: 
+      context: ./build/haproxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    ports: 
+      - 80:80
+      - 8888:8888
